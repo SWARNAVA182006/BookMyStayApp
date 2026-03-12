@@ -1,6 +1,13 @@
 import java.util.*;
 
-// Represents a confirmed reservation
+// Custom exception for invalid booking scenarios
+class InvalidBookingException extends Exception {
+    public InvalidBookingException(String message) {
+        super(message);
+    }
+}
+
+// Represents a reservation
 class Reservation {
     private String reservationId;
     private String guestName;
@@ -16,26 +23,6 @@ class Reservation {
         this.totalCost = totalCost;
     }
 
-    public String getReservationId() {
-        return reservationId;
-    }
-
-    public String getGuestName() {
-        return guestName;
-    }
-
-    public String getRoomType() {
-        return roomType;
-    }
-
-    public int getNights() {
-        return nights;
-    }
-
-    public double getTotalCost() {
-        return totalCost;
-    }
-
     @Override
     public String toString() {
         return "ReservationID: " + reservationId +
@@ -46,88 +33,70 @@ class Reservation {
     }
 }
 
-// Maintains booking history
-class BookingHistory {
-    private List<Reservation> confirmedBookings;
+// Validates booking input
+class InvalidBookingValidator {
+    private static final Set<String> validRoomTypes = Set.of("Standard", "Deluxe", "Suite");
 
-    public BookingHistory() {
-        confirmedBookings = new ArrayList<>();
+    // Validate room type
+    public static void validateRoomType(String roomType) throws InvalidBookingException {
+        if (!validRoomTypes.contains(roomType)) {
+            throw new InvalidBookingException("Invalid room type: " + roomType + ". Must be Standard, Deluxe, or Suite.");
+        }
     }
 
-    // Add a confirmed reservation to history
-    public void addReservation(Reservation reservation) {
-        confirmedBookings.add(reservation);
+    // Validate number of nights
+    public static void validateNights(int nights) throws InvalidBookingException {
+        if (nights <= 0) {
+            throw new InvalidBookingException("Number of nights must be positive. Provided: " + nights);
+        }
     }
 
-    // Retrieve all reservations
-    public List<Reservation> getAllReservations() {
-        return Collections.unmodifiableList(confirmedBookings); // prevent modification
+    // Validate total cost
+    public static void validateTotalCost(double totalCost) throws InvalidBookingException {
+        if (totalCost < 0) {
+            throw new InvalidBookingException("Total cost cannot be negative. Provided: " + totalCost);
+        }
     }
 }
 
-// Generates reports from booking history
-class BookingReportService {
-
-    private BookingHistory bookingHistory;
-
-    public BookingReportService(BookingHistory bookingHistory) {
-        this.bookingHistory = bookingHistory;
-    }
-
-    // Display all reservations
-    public void displayAllReservations() {
-        List<Reservation> reservations = bookingHistory.getAllReservations();
-
-        if (reservations.isEmpty()) {
-            System.out.println("No bookings found.");
-            return;
-        }
-
-        System.out.println("=== Booking History ===");
-        for (Reservation r : reservations) {
-            System.out.println(r);
-        }
-    }
-
-    // Generate summary: total bookings and total revenue
-    public void generateSummaryReport() {
-        List<Reservation> reservations = bookingHistory.getAllReservations();
-        int totalBookings = reservations.size();
-        double totalRevenue = 0;
-
-        for (Reservation r : reservations) {
-            totalRevenue += r.getTotalCost();
-        }
-
-        System.out.println("=== Booking Summary Report ===");
-        System.out.println("Total Bookings: " + totalBookings);
-        System.out.println("Total Revenue: ₹" + totalRevenue);
-    }
-}
-
-// Main class
+// Main class demonstrating validation
 public class BookMyStayApp {
 
     public static void main(String[] args) {
-        BookingHistory history = new BookingHistory();
+        List<Reservation> bookings = new ArrayList<>();
 
-        // Simulate confirmed reservations
-        Reservation r1 = new Reservation("RES101", "Alice", "Deluxe", 3, 4500);
-        Reservation r2 = new Reservation("RES102", "Bob", "Standard", 2, 3000);
-        Reservation r3 = new Reservation("RES103", "Charlie", "Suite", 5, 12500);
+        // Example input data (some invalid intentionally)
+        Object[][] inputData = {
+                {"RES101", "Alice", "Deluxe", 3, 4500.0},
+                {"RES102", "Bob", "Premium", 2, 3000.0},     // Invalid room type
+                {"RES103", "Charlie", "Suite", -2, 12000.0}, // Invalid nights
+                {"RES104", "Daisy", "Standard", 2, -500.0}   // Invalid cost
+        };
 
-        // Add to booking history
-        history.addReservation(r1);
-        history.addReservation(r2);
-        history.addReservation(r3);
+        for (Object[] data : inputData) {
+            String id = (String) data[0];
+            String guest = (String) data[1];
+            String roomType = (String) data[2];
+            int nights = (int) data[3];
+            double cost = (double) data[4];
 
-        // Reporting service
-        BookingReportService reportService = new BookingReportService(history);
+            try {
+                // Validate input
+                InvalidBookingValidator.validateRoomType(roomType);
+                InvalidBookingValidator.validateNights(nights);
+                InvalidBookingValidator.validateTotalCost(cost);
 
-        // Display all reservations
-        reportService.displayAllReservations();
+                // If valid, create reservation
+                Reservation r = new Reservation(id, guest, roomType, nights, cost);
+                bookings.add(r);
+                System.out.println("Booking confirmed: " + r);
 
-        // Generate summary report
-        reportService.generateSummaryReport();
+            } catch (InvalidBookingException e) {
+                // Handle validation failure gracefully
+                System.out.println("Booking failed for " + guest + ": " + e.getMessage());
+            }
+        }
+
+        System.out.println("\nTotal valid bookings: " + bookings.size());
     }
 }
